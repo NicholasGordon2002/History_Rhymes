@@ -1,0 +1,183 @@
+services:
+  # One-shot: creates SQLite DB file and runs schema migrations, then exits
+  db-init:
+    build:
+      context: ./services/db-init
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+    restart: "no"
+
+  # Stub: connects to DB, writes a test candidate record, exits
+  trend-scout:
+    build:
+      context: ./services/trend-scout
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      WIKIPEDIA_ON_THIS_DAY_URL: https://en.wikipedia.org/api/rest_v1/feed/onthisday/events
+      NEWS_API_KEY: placeholder-news-api-key
+      GOOGLE_TRENDS_API_KEY: placeholder-google-trends-api-key
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stub: reads candidates, writes a selected record, exits
+  topic-scorer:
+    build:
+      context: ./services/topic-scorer
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      ANTHROPIC_API_KEY: placeholder-anthropic-api-key
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stub
+  research:
+    build:
+      context: ./services/research
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stub
+  scriptwriter:
+    build:
+      context: ./services/scriptwriter
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      ANTHROPIC_API_KEY: placeholder-anthropic-api-key
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stub
+  visual-sourcing:
+    build:
+      context: ./services/visual-sourcing
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      STOCK_LIBRARY_API_KEY: placeholder-stock-library-api-key
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stub
+  voice-gen:
+    build:
+      context: ./services/voice-gen
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      TTS_API_KEY: placeholder-tts-api-key
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stub
+  assembly:
+    build:
+      context: ./services/assembly
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # FastAPI review dashboard on port 8000
+  review-ui:
+    build:
+      context: ./services/review-ui
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    ports:
+      - "8000:8000"
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      REVIEW_UI_HOST: "0.0.0.0"
+      REVIEW_UI_PORT: "8000"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "unless-stopped"
+
+  # Stub
+  publisher:
+    build:
+      context: ./services/publisher
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      YOUTUBE_API_KEY: placeholder-youtube-api-key
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Stub
+  analytics:
+    build:
+      context: ./services/analytics
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      YOUTUBE_API_KEY: placeholder-youtube-api-key
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+volumes:
+  db-data:
+    driver: local
+
+networks:
+  hr-network:
+    driver: bridge

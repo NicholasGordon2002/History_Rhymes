@@ -1,0 +1,1 @@
+# voice-gen deps — placeholder for TTS API client
