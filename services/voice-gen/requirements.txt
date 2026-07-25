@@ -1,1 +1,2 @@
-# voice-gen deps — placeholder for TTS API client
+gTTS>=2.5.0
+requests>=2.31.0
