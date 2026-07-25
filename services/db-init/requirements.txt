@@ -1,0 +1,1 @@
+# db-init has no external deps — sqlite3 is in Python stdlib

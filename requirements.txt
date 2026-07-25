@@ -1,0 +1,3 @@
+# Shared development requirements for History Rhymes
+# Individual services have their own requirements.txt in /services/<name>/
+# This file is for local development convenience only

@@ -1,0 +1,1 @@
+# trend-scout deps — placeholder for future API clients

@@ -1,0 +1,1 @@
+# scriptwriter deps — placeholder for anthropic client
