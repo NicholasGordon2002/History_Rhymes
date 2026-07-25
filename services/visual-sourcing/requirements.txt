@@ -1,1 +1,1 @@
-# visual-sourcing deps — placeholder for HTTP clients and image processing
+requests>=2.31.0
