@@ -1,1 +1,2 @@
-# assembly deps — placeholder for ffmpeg-python and media processing
+# assembly: image download + ffmpeg orchestration
+requests>=2.31.0
