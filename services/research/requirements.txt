@@ -1,1 +1,2 @@
-# research deps — placeholder for HTTP clients (httpx/requests)
+anthropic>=0.34.0
+requests>=2.31.0
