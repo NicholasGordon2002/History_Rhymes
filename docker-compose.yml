@@ -42,7 +42,7 @@ services:
         condition: service_completed_successfully
     restart: "no"
 
-  # Stub
+  # Multi-source fact pulling with citations for selected topics
   research:
     build:
       context: ./services/research
@@ -52,6 +52,7 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
+      ANTHROPIC_API_KEY: placeholder-anthropic-api-key
     depends_on:
       db-init:
         condition: service_completed_successfully
