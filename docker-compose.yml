@@ -11,7 +11,7 @@ services:
       DB_PATH: /data/history_rhymes.db
     restart: "no"
 
-  # Stub: connects to DB, writes a test candidate record, exits
+  # Polls Wikipedia On This Day + GDELT for candidate pairings
   trend-scout:
     build:
       context: ./services/trend-scout
@@ -21,9 +21,6 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      WIKIPEDIA_ON_THIS_DAY_URL: https://en.wikipedia.org/api/rest_v1/feed/onthisday/events
-      NEWS_API_KEY: placeholder-news-api-key
-      GOOGLE_TRENDS_API_KEY: placeholder-google-trends-api-key
     depends_on:
       db-init:
         condition: service_completed_successfully

@@ -1,1 +1,1 @@
-# trend-scout deps — placeholder for future API clients
+requests>=2.31.0
