@@ -1,1 +1,1 @@
-# topic-scorer deps — placeholder for anthropic client
+anthropic>=0.34.0
