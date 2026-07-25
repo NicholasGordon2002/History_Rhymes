@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review — {{ historical_title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+        .nav { margin-bottom: 16px; }
+        .nav a { color: #7eb8da; text-decoration: none; font-size: 0.85rem; }
+        .nav a:hover { text-decoration: underline; }
+
+        h1 { font-size: 1.5rem; color: #fff; margin-bottom: 4px; }
+        .meta { color: #888; font-size: 0.85rem; margin-bottom: 20px; }
+        .meta span { margin-right: 16px; }
+
+        .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+
+        .section {
+            background: #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 20px;
+        }
+        .section h2 {
+            font-size: 1rem; color: #bbb; margin-bottom: 12px;
+            border-bottom: 1px solid #2a2a2a; padding-bottom: 8px;
+        }
+
+        /* Video player */
+        .video-wrapper {
+            position: relative; width: 100%; max-width: 400px; margin: 0 auto;
+            aspect-ratio: 9/16; background: #000; border-radius: 6px;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+        }
+        .video-wrapper video {
+            width: 100%; height: 100%; object-fit: contain;
+        }
+        .video-missing {
+            color: #888; text-align: center; padding: 40px 20px;
+        }
+
+        /* Script */
+        .script-text {
+            white-space: pre-wrap; font-size: 0.9rem; color: #ccc;
+            max-height: 400px; overflow-y: auto; background: #111;
+            padding: 16px; border-radius: 6px; font-family: Georgia, serif;
+            line-height: 1.7;
+        }
+
+        /* Sources */
+        .source-list { list-style: none; }
+        .source-item {
+            padding: 10px 0; border-bottom: 1px solid #252525;
+        }
+        .source-item:last-child { border-bottom: none; }
+        .source-name { font-weight: 600; color: #7eb8da; font-size: 0.85rem; }
+        .source-fact { color: #ccc; font-size: 0.9rem; margin-top: 4px; }
+        .source-citation { color: #777; font-size: 0.75rem; margin-top: 2px; }
+        .source-type-label {
+            display: inline-block; font-size: 0.7rem; padding: 2px 8px;
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .label-historical { background: #2a3a5c; color: #8ab4f8; }
+        .label-modern { background: #3a2a5c; color: #c48af8; }
+
+        /* Visual assets */
+        .asset-list { list-style: none; }
+        .asset-item {
+            display: flex; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid #252525; align-items: flex-start;
+        }
+        .asset-item:last-child { border-bottom: none; }
+        .asset-index {
+            font-size: 0.75rem; color: #666; min-width: 24px; font-variant-numeric: tabular-nums;
+        }
+        .asset-details { flex: 1; }
+        .asset-source { font-size: 0.8rem; color: #aaa; }
+        .asset-license {
+            display: inline-block; font-size: 0.65rem; padding: 1px 6px;
+            border-radius: 3px; margin-left: 6px;
+        }
+        .license-pd { background: #1a3a1a; color: #4caf50; }
+        .license-cc0 { background: #1a3a2a; color: #66bb6a; }
+        .license-stock { background: #3a3a1a; color: #ffd54f; }
+        .asset-attribution { font-size: 0.75rem; color: #666; margin-top: 2px; }
+
+        /* Actions */
+        .action-bar {
+            display: flex; gap: 12px; align-items: flex-start; margin-top: 24px;
+            padding: 20px; background: #1a1a1a; border-radius: 8px;
+        }
+        .notes-field {
+            flex: 1; display: flex; flex-direction: column;
+        }
+        .notes-field label {
+            font-size: 0.85rem; color: #aaa; margin-bottom: 6px;
+        }
+        .notes-field textarea {
+            width: 100%; padding: 10px; border-radius: 6px;
+            background: #111; color: #e0e0e0; border: 1px solid #333;
+            font-family: inherit; font-size: 0.85rem; resize: vertical;
+            min-height: 60px;
+        }
+        .btn-group { display: flex; gap: 8px; align-items: flex-end; }
+        .btn {
+            display: inline-block; padding: 8px 20px; border-radius: 6px;
+            font-size: 0.9rem; font-weight: 500; cursor: pointer; border: none;
+            text-decoration: none; transition: background 0.15s;
+        }
+        .btn-approve { background: #2d8a4e; color: #fff; }
+        .btn-approve:hover { background: #36a35c; }
+        .btn-reject { background: #8a2d2d; color: #fff; }
+        .btn-reject:hover { background: #a33636; }
+
+        .status-badge {
+            display: inline-block; padding: 3px 12px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .status-pending { background: #4a3a1a; color: #ffd54f; }
+        .status-approved { background: #1a3a1a; color: #4caf50; }
+        .status-rejected { background: #3a1a1a; color: #f44336; }
+
+        .rationale {
+            color: #999; font-style: italic; font-size: 0.85rem;
+            padding: 12px; background: #111; border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">← Back to Dashboard</a>
+    </div>
+    <h1>{{ historical_title }}</h1>
+    <div class="meta">
+        {% if modern_title %}<span>↳ {{ modern_title }}</span>{% endif %}
+        {% if historical_date %}<span>📅 {{ historical_date }}</span>{% endif %}
+        <span>⏱ {{ duration }}</span>
+        <span>🕐 {{ created_at }}</span>
+        <span class="status-badge status-{{ review_status }}">{{ review_status }}</span>
+    </div>
+
+    {% if pairing_rationale %}
+    <div class="rationale">{{ pairing_rationale }}</div>
+    {% endif %}
+
+    <div class="layout">
+        <!-- Left column: Video + Script -->
+        <div>
+            <div class="section">
+                <h2>Rendered Video</h2>
+                {% if has_video_file and video_filename %}
+                <div class="video-wrapper">
+                    <video controls preload="metadata">
+                        <source src="/videos/{{ video_filename }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                {% else %}
+                <div class="video-missing">
+                    <p><strong>Video file not available</strong></p>
+                    <p style="font-size:0.85rem; margin-top:4px;">The rendered MP4 was not found at the expected path.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="section">
+                <h2>Full Script</h2>
+                {% if script_text %}
+                <div class="script-text">{{ script_text }}</div>
+                {% else %}
+                <p style="color:#888;">No script available for this topic.</p>
+                {% endif %}
+                {% if structure_notes %}
+                <p style="margin-top:12px; font-size:0.8rem; color:#666;">
+                    Structure notes: {{ structure_notes }}
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right column: Sources + Visual Assets -->
+        <div>
+            <div class="section">
+                <h2>Sources — Historical</h2>
+                {% if historical_sources|length > 0 %}
+                <ul class="source-list">
+                    {% for s in historical_sources %}
+                    <li class="source-item">
+                        <span class="source-type-label label-historical">historical</span>
+                        <div class="source-name">{{ s.source_name }}</div>
+                        <div class="source-fact">{{ s.fact_text }}</div>
+                        <div class="source-citation">{{ s.citation_text }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="color:#888;">No historical sources.</p>
+                {% endif %}
+            </div>
+
+            <div class="section">
+                <h2>Sources — Modern</h2>
+                {% if modern_sources|length > 0 %}
+                <ul class="source-list">
+                    {% for s in modern_sources %}
+                    <li class="source-item">
+                        <span class="source-type-label label-modern">modern</span>
+                        <div class="source-name">{{ s.source_name }}</div>
+                        <div class="source-fact">{{ s.fact_text }}</div>
+                        <div class="source-citation">{{ s.citation_text }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="color:#888;">No modern sources.</p>
+                {% endif %}
+            </div>
+
+            <div class="section">
+                <h2>Visual Shot List</h2>
+                {% if visual_assets|length > 0 %}
+                <ul class="asset-list">
+                    {% for a in visual_assets %}
+                    <li class="asset-item">
+                        <span class="asset-index">#{{ a.script_segment_index }}</span>
+                        <div class="asset-details">
+                            <div class="asset-source">
+                                {{ a.asset_source }}
+                                <span class="asset-license {% if a.license_tier == 'public_domain' %}license-pd{% elif a.license_tier == 'CC0' %}license-cc0{% else %}license-stock{% endif %}">
+                                    {{ a.license_tier }}
+                                </span>
+                            </div>
+                            {% if a.attribution_text %}
+                            <div class="asset-attribution">{{ a.attribution_text }}</div>
+                            {% endif %}
+                            {% if a.asset_url %}
+                            <div class="asset-attribution" style="word-break:break-all;">{{ a.asset_url }}</div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="color:#888;">No visual assets assigned.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Action bar -->
+    {% if review_status == 'pending' %}
+    <div class="action-bar">
+        <form method="post" action="/api/approve/{{ video_id }}" style="display:flex; width:100%; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="notes-field">
+                <label for="review_notes">Review notes (optional)</label>
+                <textarea name="review_notes" id="review_notes" placeholder="Add notes about this decision…">{{ review_notes }}</textarea>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-approve">✓ Approve</button>
+            </div>
+        </form>
+        <form method="post" action="/api/reject/{{ video_id }}" style="display:flex; align-items:flex-end;">
+            <button type="submit" class="btn btn-reject">✗ Reject</button>
+        </form>
+    </div>
+    {% elif review_status == 'approved' %}
+    <div class="section">
+        <p style="color:#4caf50;">✓ This video has been approved.</p>
+        {% if review_notes %}<p style="color:#888; font-size:0.85rem;">Notes: {{ review_notes }}</p>{% endif %}
+    </div>
+    {% elif review_status == 'rejected' %}
+    <div class="section">
+        <p style="color:#f44336;">✗ This video has been rejected.</p>
+        {% if review_notes %}<p style="color:#888; font-size:0.85rem;">Notes: {{ review_notes }}</p>{% endif %}
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>
