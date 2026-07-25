@@ -140,23 +140,30 @@ services:
         condition: service_completed_successfully
     restart: "unless-stopped"
 
-  # Stub
+  # Uploads approved videos to YouTube Shorts via OAuth 2.0
   publisher:
     build:
       context: ./services/publisher
     volumes:
       - db-data:/data
+      # Mount the videos directory so publisher can access rendered files.
+      # In production, point this at the assembly output directory.
+      - ./videos:/videos
     networks:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      YOUTUBE_API_KEY: placeholder-youtube-api-key
+      # YouTube OAuth 2.0 credentials — obtain from Google Cloud Console
+      # See services/publisher/main.py docstring for setup instructions.
+      YOUTUBE_CLIENT_ID: placeholder-youtube-client-id
+      YOUTUBE_CLIENT_SECRET: placeholder-youtube-client-secret
+      YOUTUBE_REFRESH_TOKEN: placeholder-youtube-refresh-token
     depends_on:
       db-init:
         condition: service_completed_successfully
     restart: "no"
 
-  # Stub
+  # Pulls YouTube performance metrics and closes the learning loop
   analytics:
     build:
       context: ./services/analytics
@@ -166,7 +173,11 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      YOUTUBE_API_KEY: placeholder-youtube-api-key
+      # YouTube OAuth 2.0 credentials — shared with publisher service
+      # See services/publisher/main.py docstring for setup instructions.
+      YOUTUBE_CLIENT_ID: placeholder-youtube-client-id
+      YOUTUBE_CLIENT_SECRET: placeholder-youtube-client-secret
+      YOUTUBE_REFRESH_TOKEN: placeholder-youtube-refresh-token
     depends_on:
       db-init:
         condition: service_completed_successfully
