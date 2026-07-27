@@ -124,6 +124,11 @@ Evaluation criteria (each 0.0-1.0 scale):
   and holds them for the full 60 seconds. Consider the YouTuber Shorts audience.
 
 Rules:
+- Score these topics for a PG-rated educational channel. Topics involving
+  violence, massacres, genocide, terrorism, executions, war, or graphic tragedy
+  should receive very low scores (0.0-0.1 overall). Prefer topics about
+  discovery, invention, culture, sports, politics (non-violent), science,
+  arts, and human achievement.
 - A candidate with "modern_side_weak": true means we haven't found a strong
   modern parallel yet — score the historical event on its standalone merits and
   note the gap. Don't automatically penalize these; sometimes the history alone

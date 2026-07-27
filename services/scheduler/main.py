@@ -3,6 +3,8 @@ import sys
 import os
 import time
 
+COMPOSE_PROJECT = os.environ.get("COMPOSE_PROJECT_NAME", "history-rhymes")
+
 SERVICES = [
     ("trend-scout", "candidates", "candidate"),
     ("topic-scorer", "scored", "selected"),
@@ -15,11 +17,23 @@ SERVICES = [
     ("analytics", "analytics", "stats pulled"),
 ]
 
+
 def run_stage(service_name, verb, noun):
     print(f"\n[scheduler] === Stage: {service_name} ===")
     try:
+        image = f"{COMPOSE_PROJECT}-{service_name}"
+        network = f"{COMPOSE_PROJECT}_hr-network"
+        volume = f"{COMPOSE_PROJECT}_db-data"
+
+        cmd = [
+            "docker", "run", "--rm",
+            "--network", network,
+            "-v", f"{volume}:/data",
+            "--env-file", "/repo/.env",
+            image,
+        ]
         result = subprocess.run(
-            ["docker", "compose", "run", "--rm", "-T", service_name],
+            cmd,
             capture_output=True, text=True, timeout=300,
             cwd="/repo"
         )
@@ -28,7 +42,7 @@ def run_stage(service_name, verb, noun):
             print(result.stdout)
         if result.stderr:
             print(result.stderr, file=sys.stderr)
-        
+
         if result.returncode == 0:
             # Try to parse meaningful output for a summary
             summary = extract_summary(service_name, result.stdout)
@@ -43,6 +57,7 @@ def run_stage(service_name, verb, noun):
     except Exception as e:
         print(f"[scheduler] {service_name}: FAILED ({e})")
         return False
+
 
 def extract_summary(service, output):
     # Parse output for key metrics
@@ -83,6 +98,7 @@ def extract_summary(service, output):
     else:
         return "completed"
 
+
 def main():
     # Pre-flight checks
     if not os.path.exists("/var/run/docker.sock"):
@@ -91,25 +107,26 @@ def main():
     if not os.path.exists("/repo/docker-compose.yml"):
         print("[scheduler] FATAL: docker-compose.yml not found at /repo")
         sys.exit(1)
-    
+
     print("[scheduler] Pipeline starting...")
     print("[scheduler] Review dashboard will be available at http://localhost:8000")
-    
+
     succeeded = 0
     failed = 0
     skipped = 0
-    
+
     for service, verb, noun in SERVICES:
         ok = run_stage(service, verb, noun)
         if ok:
             succeeded += 1
         else:
             failed += 1
-    
+
     print("\n[scheduler] ==================================")
     print(f"[scheduler] Pipeline complete: {succeeded} succeeded, {failed} failed, {skipped} skipped")
     print(f"[scheduler] Review dashboard: http://localhost:8000")
     print("[scheduler] ==================================")
+
 
 if __name__ == "__main__":
     main()
