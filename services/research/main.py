@@ -32,8 +32,8 @@ DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 MODEL = "claude-3-haiku-20240307"
-MAX_RETRIES = 3
-RETRY_BACKOFF = 2.0  # seconds, multiplied exponentially
+MAX_RETRIES = 2  # 1 attempt + 1 retry
+RETRY_WAIT = 5.0  # seconds, flat wait between retries
 
 HTTP_TIMEOUT = 15  # seconds for Wikipedia/LOC HTTP calls
 ANTHROPIC_TIMEOUT = 90.0  # generous — web search adds latency
@@ -154,9 +154,8 @@ def fetch_wikipedia_summary(title: str) -> dict | None:
                 attempt + 1, MAX_RETRIES, title, exc,
             )
             if attempt < MAX_RETRIES - 1:
-                wait = RETRY_BACKOFF ** (attempt + 1)
-                logger.info("Retrying in %.1fs ...", wait)
-                time.sleep(wait)
+                logger.info("Retry 1/2 after 5s...")
+                time.sleep(RETRY_WAIT)
         except ValueError as exc:
             logger.warning("Wikipedia returned invalid JSON for '%s': %s", title, exc)
             return None
@@ -346,6 +345,17 @@ def fetch_modern_facts_via_claude(topic: sqlite3.Row) -> list[dict]:
         "'search_queries_used' array. Only return valid JSON — no other text."
     )
 
+    # --- Diagnostic logging before API call ---
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if key and key != "placeholder-anthropic-api-key":
+        masked = key[:15] + "..." + key[-4:] if len(key) > 20 else "***too-short***"
+        print(f"[research] Using API key: {masked}")
+        print(f"[research] API key length: {len(key)} chars, starts with: {key[:10]}...")
+    else:
+        print("[research] WARNING: ANTHROPIC_API_KEY is missing or still set to placeholder!")
+    print(f"[research] Model: {MODEL}")
+    print("[research] Endpoint: Anthropic Messages API (client.messages.create)")
+
     client = Anthropic(
         api_key=ANTHROPIC_API_KEY,
         timeout=ANTHROPIC_TIMEOUT,
@@ -437,9 +447,8 @@ def fetch_modern_facts_via_claude(topic: sqlite3.Row) -> list[dict]:
             )
 
         if attempt < MAX_RETRIES - 1:
-            wait = RETRY_BACKOFF ** (attempt + 1)
-            logger.info("Retrying in %.1fs ...", wait)
-            time.sleep(wait)
+            logger.info("Retry 1/2 after 5s...")
+            time.sleep(RETRY_WAIT)
 
     logger.error(
         "Claude web search failed after %d attempts for topic #%d. Last error: %s",
@@ -554,6 +563,7 @@ def research_topic(conn: sqlite3.Connection, topic: sqlite3.Row) -> int:
     wiki_page_title = title
 
     wiki_summary = fetch_wikipedia_summary(wiki_page_title)
+    time.sleep(1)  # Rate limit safeguard: Wikipedia requests free API, be respectful
 
     if wiki_summary:
         wiki_title_display = wiki_summary.get("title", wiki_page_title)
@@ -585,6 +595,7 @@ def research_topic(conn: sqlite3.Connection, topic: sqlite3.Row) -> int:
     # Use the historical event title as the search query
     loc_query = title[:120]  # reasonable query length
     loc_facts = fetch_loc_facts(loc_query)
+    time.sleep(2)  # Rate limit safeguard: Library of Congress requests free API, be respectful
     for fact in loc_facts:
         insert_source(
             conn, topic_id, "historical",

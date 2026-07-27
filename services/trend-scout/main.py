@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 import logging
 from datetime import datetime, timedelta, timezone
 import requests
@@ -239,6 +240,7 @@ def find_modern_parallel(historical_event: dict) -> tuple[str, str, str]:
         return ("", "", "historical_event_pending_modern")
 
     articles = search_gdelt(keywords)
+    time.sleep(2)  # Rate limit safeguard: GDELT requests free API, be respectful
     if not articles:
         logger.info("No GDELT results for keywords '%s' — storing with pending modern", keywords)
         return ("", "", "historical_event_pending_modern")

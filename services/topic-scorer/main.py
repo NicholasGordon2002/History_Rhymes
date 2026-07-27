@@ -25,8 +25,8 @@ TOP_N = int(os.environ.get("TOP_N", "5"))
 # Cap selected candidates per run (cost-conscious testing; default 3)
 MAX_TOPICS = int(os.environ.get("MAX_TOPICS", "3"))
 MODEL = "claude-3-haiku-20240307"
-MAX_RETRIES = 3
-RETRY_BACKOFF = 2.0  # seconds, multiplied exponentially
+MAX_RETRIES = 2  # 1 attempt + 1 retry
+RETRY_WAIT = 5.0  # seconds, flat wait between retries
 ANTHROPIC_TIMEOUT = 60.0  # generous timeout for batch scoring
 
 # ---------------------------------------------------------------------------
@@ -155,8 +155,19 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
     Send the full candidate list to Claude Haiku for scoring.
     Returns a dict mapping candidate id → scores dict.
 
-    Implements retry with exponential backoff on transient errors.
+    Implements 1 attempt + 1 retry with a flat 5-second wait on transient errors.
     """
+    # --- Diagnostic logging before API call ---
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if key and key != "placeholder-anthropic-api-key":
+        masked = key[:15] + "..." + key[-4:] if len(key) > 20 else "***too-short***"
+        print(f"[topic-scorer] Using API key: {masked}")
+        print(f"[topic-scorer] API key length: {len(key)} chars, starts with: {key[:10]}...")
+    else:
+        print("[topic-scorer] WARNING: ANTHROPIC_API_KEY is missing or still set to placeholder!")
+    print(f"[topic-scorer] Model: {MODEL}")
+    print("[topic-scorer] Endpoint: Anthropic Messages API (client.messages.create)")
+
     client = Anthropic(
         api_key=ANTHROPIC_API_KEY,
         timeout=ANTHROPIC_TIMEOUT,
@@ -226,9 +237,8 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
             logger.warning("Attempt %d: Claude API error: %s", attempt + 1, exc)
 
         if attempt < MAX_RETRIES - 1:
-            wait = RETRY_BACKOFF ** (attempt + 1)
-            logger.info("Retrying in %.1fs ...", wait)
-            time.sleep(wait)
+            logger.info("Retry 1/2 after 5s...")
+            time.sleep(RETRY_WAIT)
 
     raise RuntimeError(
         f"Failed to score candidates after {MAX_RETRIES} attempts. "

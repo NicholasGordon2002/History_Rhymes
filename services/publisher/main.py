@@ -50,8 +50,8 @@ YOUTUBE_API_VERSION = "v3"
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 
 CATEGORY_ID = 22  # People & Blogs — suitable for Shorts content
-MAX_RETRIES = 3
-RETRY_BACKOFF = 2.0  # seconds, multiplied exponentially
+MAX_RETRIES = 2  # 1 attempt + 1 retry
+RETRY_WAIT = 5.0  # seconds, flat wait between retries
 
 # Synthetic content disclosure:
 # YouTube requires disclosure ONLY for content that:
@@ -348,9 +348,8 @@ def upload_video(
             )
 
         if attempt < MAX_RETRIES - 1:
-            wait = RETRY_BACKOFF ** (attempt + 1)
-            logger.info("Retrying in %.1fs ...", wait)
-            time.sleep(wait)
+            logger.info("Retry 1/2 after 5s...")
+            time.sleep(RETRY_WAIT)
 
     if response is None:
         raise RuntimeError(
