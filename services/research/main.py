@@ -375,7 +375,6 @@ def fetch_modern_facts_via_claude(topic: sqlite3.Row) -> list[dict]:
                 max_tokens=2048,
                 system=MODERN_FACTS_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
-                temperature=0.2,
                 tools=[{"type": "web_search_20250305", "name": "web_search"}],
                 tool_choice="auto",
             )
