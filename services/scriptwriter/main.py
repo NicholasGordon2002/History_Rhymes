@@ -372,7 +372,6 @@ def synthesize_script(
                 max_tokens=4096,
                 system=system_prompt,
                 messages=[{"role": "user", "content": full_user_message}],
-                temperature=0.7,  # higher temperature for creative variety
             )
 
             # Extract text content

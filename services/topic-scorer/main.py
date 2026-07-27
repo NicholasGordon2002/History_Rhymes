@@ -220,7 +220,6 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
                 max_tokens=4096,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
-                temperature=0.3,
             )
 
             # Extract text from the response
