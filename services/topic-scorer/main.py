@@ -24,7 +24,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 TOP_N = int(os.environ.get("TOP_N", "5"))
 # Cap selected candidates per run (cost-conscious testing; default 3)
 MAX_TOPICS = int(os.environ.get("MAX_TOPICS", "3"))
-MODEL = "claude-fable-5"
+MODEL = "claude-haiku-3-5-20241022"
 MAX_RETRIES = 2  # 1 attempt + 1 retry
 RETRY_WAIT = 5.0  # seconds, flat wait between retries
 ANTHROPIC_TIMEOUT = 60.0  # generous timeout for batch scoring
