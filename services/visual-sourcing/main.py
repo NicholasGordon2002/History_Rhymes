@@ -360,7 +360,9 @@ def process_segments(conn: sqlite3.Connection, topic_id: int, segments: list[dic
 
         # Search both sources
         commons_results = search_wikimedia_commons(query)
+        time.sleep(1)  # Rate limit safeguard: Wikimedia Commons requests free API, be respectful
         loc_results = search_library_of_congress(query)
+        time.sleep(2)  # Rate limit safeguard: Library of Congress requests free API, be respectful
 
         # Combine results — prefer Commons first then LOC
         all_results = commons_results + loc_results

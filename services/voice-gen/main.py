@@ -19,6 +19,7 @@ import logging
 import os
 import sqlite3
 import sys
+import time
 
 # ---------------------------------------------------------------------------
 # Config
@@ -235,6 +236,7 @@ def main():
         generated = 0
         skipped = 0
         errors = 0
+        tts_calls = 0  # Track total TTS API calls this session
 
         for script in scripts:
             topic_id = script["topic_id"]
@@ -258,6 +260,9 @@ def main():
             try:
                 generate_audio(topic_id, script_text)
                 generated += 1
+                tts_calls += 1
+                logger.info(f"[voice-gen] TTS calls this session: {tts_calls}")
+                time.sleep(3)  # Rate limit safeguard: gTTS requests free API, be respectful
             except Exception as e:
                 logger.error(f"  Topic {topic_id}: TTS generation failed: {e}")
                 errors += 1

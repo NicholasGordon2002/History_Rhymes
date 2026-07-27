@@ -28,8 +28,8 @@ DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 MODEL = "claude-3-5-sonnet-20241022"
-MAX_RETRIES = 3
-RETRY_BACKOFF = 2.0  # seconds, multiplied exponentially
+MAX_RETRIES = 2  # 1 attempt + 1 retry
+RETRY_WAIT = 5.0  # seconds, flat wait between retries
 ANTHROPIC_TIMEOUT = 120.0  # generous — Sonnet synthesis can take longer
 
 # YouTube Shorts target: 40–60 seconds of narration at ~2.5 words/sec
@@ -321,9 +321,20 @@ def synthesize_script(
 
     Returns a dict with: script_text, segments (list), structure_notes.
 
-    Implements retry with exponential backoff on transient errors and
+    Implements 1 attempt + 1 retry with a flat 5-second wait on transient errors and
     JSON parse failures.
     """
+    # --- Diagnostic logging before API call ---
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if key and key != "placeholder-anthropic-api-key":
+        masked = key[:15] + "..." + key[-4:] if len(key) > 20 else "***too-short***"
+        print(f"[scriptwriter] Using API key: {masked}")
+        print(f"[scriptwriter] API key length: {len(key)} chars, starts with: {key[:10]}...")
+    else:
+        print("[scriptwriter] WARNING: ANTHROPIC_API_KEY is missing or still set to placeholder!")
+    print(f"[scriptwriter] Model: {MODEL}")
+    print("[scriptwriter] Endpoint: Anthropic Messages API (client.messages.create)")
+
     client = Anthropic(
         api_key=ANTHROPIC_API_KEY,
         timeout=ANTHROPIC_TIMEOUT,
@@ -441,9 +452,8 @@ def synthesize_script(
             )
 
         if attempt < MAX_RETRIES - 1:
-            wait = RETRY_BACKOFF ** (attempt + 1)
-            logger.info("Retrying in %.1fs ...", wait)
-            time.sleep(wait)
+            logger.info("Retry 1/2 after 5s...")
+            time.sleep(RETRY_WAIT)
 
     raise RuntimeError(
         f"Failed to synthesize script for topic #{topic['id']} "
