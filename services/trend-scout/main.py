@@ -1,6 +1,8 @@
 """
-trend-scout: Polls Wikipedia "On This Day" API and GDELT for candidate
-historical/modern event pairings. Writes candidate rows to the topics table.
+trend-scout: Polls Wikipedia "On This Day" API for candidate historical events.
+GDELT integration disabled (unreliable 429 errors) — modern parallels are found
+later by the research stage via Claude web search.
+Writes candidate rows to the topics table.
 One-shot batch job: runs, polls, writes candidates, exits.
 """
 import os
@@ -17,12 +19,10 @@ import requests
 # ---------------------------------------------------------------------------
 DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 WIKIPEDIA_BASE = "https://en.wikipedia.org/api/rest_v1/feed/onthisday/events"
-GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 # How many days to fetch (today + N-1 ahead)
 LOOKAHEAD_DAYS = 3
 # Timeouts for external HTTP calls (seconds)
 HTTP_TIMEOUT = 15
-GDELT_TIMEOUT = 10
 # Maximum events per day to process (Wikipedia often returns 30-50+)
 MAX_EVENTS_PER_DAY = 10
 # Cap total candidates written per run (cost-conscious testing; default 3)
@@ -39,6 +39,13 @@ CONTENT_FILTER_PATTERNS = [
     r'\bdeath camp\b', r'\bconcentration camp\b', r'\bwar crime\b',
     r'\batrocit\w+\b', r'\bserial killer\b', r'\bshooting\b',
     r'\bbehead\w+\b', r'\bexecuted\b', r'\bhung\b', r'\blinching\b',
+    # Disaster / casualty terms (added per Attempt Run #2 feedback)
+    r'\bdisaster\b', r'\bcrash\b', r'\bexplosion\b', r'\baccident\b',
+    r'\bearthquake\b', r'\bflood\b', r'\btsunami\b', r'\bfire\b',
+    r'\boutbreak\b', r'\bepidemic\b', r'\bpandemic\b', r'\bplague\b',
+    r'\bfamine\b', r'\bavalanche\b', r'\btornado\b', r'\bhurricane\b',
+    r'\bcasualt\w+\b', r'\bdeaths?\b', r'\bperished\b', r'\bfatal\w*\b',
+    r'\bwreck\b', r'\bcollapse\b', r'\bsinking\b', r'\bdrowning\b',
 ]
 
 
@@ -159,108 +166,16 @@ def fetch_on_this_day(month: int, day: int) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Keyword extraction (simple heuristic for GDELT queries)
-# ---------------------------------------------------------------------------
-# Common stop-words to strip from event text before forming a search query
-_STOP_WORDS = {
-    "the", "a", "an", "in", "on", "at", "to", "for", "of", "and", "or",
-    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
-    "do", "did", "does", "will", "would", "could", "should", "may", "might",
-    "can", "shall", "this", "that", "these", "those", "it", "its", "by",
-    "from", "with", "as", "into", "through", "during", "before", "after",
-    "above", "below", "between", "under", "over", "first", "then", "also",
-    "his", "her", "their", "our", "my", "your", "its", "not", "no", "but",
-    "some", "each", "every", "all", "both", "few", "more", "most", "other",
-    "such", "only", "own", "same", "so", "than", "too", "very", "just",
-    "now", "up", "out", "about", "how", "when", "where", "who", "whom",
-    "which", "what", "why",
-}
-
-
-def extract_keywords(text: str, max_words: int = 4) -> str:
-    """
-    Extract a short keyword phrase from an event description.
-    Strips common words and returns the most significant remaining terms.
-    """
-    # Remove parenthetical notes
-    text = re.sub(r"\([^)]*\)", "", text)
-    # Tokenize: lowercase, only alphabetic chars
-    words = re.findall(r"[a-zA-Z]+", text.lower())
-    # Filter stop-words
-    meaningful = [w for w in words if w not in _STOP_WORDS and len(w) > 2]
-    # Take the first N meaningful words as the search phrase
-    return " ".join(meaningful[:max_words])
-
-
-# ---------------------------------------------------------------------------
-# GDELT DOC 2.0 API
-# ---------------------------------------------------------------------------
-def search_gdelt(keywords: str, max_results: int = 3) -> list[dict]:
-    """
-    Search GDELT for recent news articles matching the given keywords.
-    Returns a list of article dicts (title, snippet, url, domain, sourcecountry).
-    """
-    if not keywords.strip():
-        return []
-    params = {
-        "query": keywords,
-        "format": "json",
-        "maxrecords": max_results,
-        "mode": "artlist",
-        "sort": "hybridrel",
-    }
-    logger.info("GDELT search: '%s'", keywords)
-    try:
-        resp = requests.get(GDELT_DOC_API, params=params, timeout=GDELT_TIMEOUT)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.RequestException as exc:
-        logger.error("GDELT API error for '%s': %s", keywords, exc)
-        return []
-    except ValueError as exc:
-        logger.error("GDELT API returned invalid JSON for '%s': %s", keywords, exc)
-        return []
-
-    articles = data.get("articles", [])
-    logger.info("GDELT returned %d article(s) for '%s'", len(articles), keywords)
-    return articles
-
-
-# ---------------------------------------------------------------------------
-# Modern parallel finder
+# Modern parallel finder (GDELT disabled — research stage finds parallels)
 # ---------------------------------------------------------------------------
 def find_modern_parallel(historical_event: dict) -> tuple[str, str, str]:
     """
-    Given a historical event from Wikipedia, search GDELT for a modern parallel.
+    GDELT is disabled due to unreliable 429 rate-limiting on free API tier.
+    Store all historical events with empty modern fields — the research stage
+    will find modern parallels via Claude web search, which is more reliable.
     Returns (modern_title, modern_description, pairing_rationale).
     """
-    text = historical_event.get("text", "")
-    keywords = extract_keywords(text)
-    if not keywords:
-        return ("", "", "historical_event_pending_modern")
-
-    articles = search_gdelt(keywords)
-    time.sleep(2)  # Rate limit safeguard: GDELT requests free API, be respectful
-    if not articles:
-        logger.info("No GDELT results for keywords '%s' — storing with pending modern", keywords)
-        return ("", "", "historical_event_pending_modern")
-
-    # Use the first article as the modern parallel
-    best = articles[0]
-    title = best.get("title", "Recent Event")
-    snippet = best.get("snippet", "")
-    url = best.get("url", "")
-
-    # Build a simple rationale
-    rationale = (
-        f"GDELT keyword match: '{keywords}' → article '{title}' "
-        f"(domain: {best.get('domain', 'unknown')}, "
-        f"country: {best.get('sourcecountry', 'unknown')})"
-    )
-    if url:
-        rationale += f" | url: {url}"
-
-    return (title, snippet, rationale)
+    return ("", "", "pending_modern")
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +248,10 @@ def run():
         "[trend-scout] Capped at %d candidates (from %d total)",
         MAX_TOPICS,
         len(filtered_events),
+    )
+    logger.info(
+        "[trend-scout] GDELT disabled — storing %d historical events with pending modern status",
+        len(candidates_to_write),
     )
 
     # --- Insert capped candidates ---
