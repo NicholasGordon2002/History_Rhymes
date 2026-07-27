@@ -31,7 +31,7 @@ from anthropic import Anthropic
 DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-MODEL = "claude-3-haiku-20240307"
+MODEL = "claude-3-5-haiku-20241022"
 MAX_RETRIES = 2  # 1 attempt + 1 retry
 RETRY_WAIT = 5.0  # seconds, flat wait between retries
 
