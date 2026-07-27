@@ -50,7 +50,7 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      ANTHROPIC_API_KEY: placeholder-anthropic-api-key
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     restart: "no"
 
   # Multi-source fact pulling with citations for selected topics
@@ -63,7 +63,7 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      ANTHROPIC_API_KEY: placeholder-anthropic-api-key
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     restart: "no"
 
   # Stub
@@ -76,7 +76,7 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      ANTHROPIC_API_KEY: placeholder-anthropic-api-key
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     restart: "no"
 
   # Stub
@@ -89,7 +89,7 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      STOCK_LIBRARY_API_KEY: placeholder-stock-library-api-key
+      STOCK_LIBRARY_API_KEY: ${STOCK_LIBRARY_API_KEY:-}
     restart: "no"
 
   # Stub
@@ -102,7 +102,7 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      TTS_API_KEY: placeholder-tts-api-key
+      TTS_API_KEY: ${TTS_API_KEY:-}
     restart: "no"
 
   # Stub
@@ -151,9 +151,9 @@ services:
       DB_PATH: /data/history_rhymes.db
       # YouTube OAuth 2.0 credentials — obtain from Google Cloud Console
       # See services/publisher/main.py docstring for setup instructions.
-      YOUTUBE_CLIENT_ID: placeholder-youtube-client-id
-      YOUTUBE_CLIENT_SECRET: placeholder-youtube-client-secret
-      YOUTUBE_REFRESH_TOKEN: placeholder-youtube-refresh-token
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
+      YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN:-}
     restart: "no"
 
   # Pulls YouTube performance metrics and closes the learning loop
@@ -168,9 +168,9 @@ services:
       DB_PATH: /data/history_rhymes.db
       # YouTube OAuth 2.0 credentials — shared with publisher service
       # See services/publisher/main.py docstring for setup instructions.
-      YOUTUBE_CLIENT_ID: placeholder-youtube-client-id
-      YOUTUBE_CLIENT_SECRET: placeholder-youtube-client-secret
-      YOUTUBE_REFRESH_TOKEN: placeholder-youtube-refresh-token
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
+      YOUTUBE_REFRESH_TOKEN: ${YOUTUBE_REFRESH_TOKEN:-}
     restart: "no"
 
 volumes:
