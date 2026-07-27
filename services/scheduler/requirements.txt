@@ -1,0 +1,1 @@
+# scheduler has no external Python dependencies — uses subprocess + docker CLI

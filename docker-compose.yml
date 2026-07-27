@@ -11,7 +11,8 @@ services:
       DB_PATH: /data/history_rhymes.db
     restart: "no"
 
-  # Stub: connects to DB, writes a test candidate record, exits
+  # --- Pipeline services (manual-only — started by scheduler) ---
+
   trend-scout:
     build:
       context: ./services/trend-scout
@@ -24,12 +25,8 @@ services:
       WIKIPEDIA_ON_THIS_DAY_URL: https://en.wikipedia.org/api/rest_v1/feed/onthisday/events
       NEWS_API_KEY: placeholder-news-api-key
       GOOGLE_TRENDS_API_KEY: placeholder-google-trends-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
-  # Stub: reads candidates, writes a selected record, exits
   topic-scorer:
     build:
       context: ./services/topic-scorer
@@ -40,12 +37,8 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       ANTHROPIC_API_KEY: placeholder-anthropic-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
-  # Stub
   research:
     build:
       context: ./services/research
@@ -55,12 +48,8 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
-  # Stub
   scriptwriter:
     build:
       context: ./services/scriptwriter
@@ -71,12 +60,8 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       ANTHROPIC_API_KEY: placeholder-anthropic-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
-  # Stub
   visual-sourcing:
     build:
       context: ./services/visual-sourcing
@@ -87,12 +72,8 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       STOCK_LIBRARY_API_KEY: placeholder-stock-library-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
-  # Stub
   voice-gen:
     build:
       context: ./services/voice-gen
@@ -103,12 +84,8 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       TTS_API_KEY: placeholder-tts-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
-  # Stub
   assembly:
     build:
       context: ./services/assembly
@@ -118,12 +95,35 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
-  # FastAPI review dashboard on port 8000
+  publisher:
+    build:
+      context: ./services/publisher
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      YOUTUBE_API_KEY: placeholder-youtube-api-key
+    restart: "no"
+
+  analytics:
+    build:
+      context: ./services/analytics
+    volumes:
+      - db-data:/data
+    networks:
+      - hr-network
+    environment:
+      DB_PATH: /data/history_rhymes.db
+      YOUTUBE_API_KEY: placeholder-youtube-api-key
+    restart: "no"
+
+  # --- Daemon (auto-starts) ---
+
+  # FastAPI review dashboard on port 8000 — the only always-on daemon
   review-ui:
     build:
       context: ./services/review-ui
@@ -142,33 +142,22 @@ services:
         condition: service_completed_successfully
     restart: "unless-stopped"
 
-  # Stub
-  publisher:
-    build:
-      context: ./services/publisher
-    volumes:
-      - db-data:/data
-    networks:
-      - hr-network
-    environment:
-      DB_PATH: /data/history_rhymes.db
-      YOUTUBE_API_KEY: placeholder-youtube-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-    restart: "no"
+  # --- Pipeline orchestrator (one-shot) ---
 
-  # Stub
-  analytics:
+  scheduler:
     build:
-      context: ./services/analytics
+      context: ./services/scheduler
     volumes:
       - db-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/repo:ro
     networks:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-      YOUTUBE_API_KEY: placeholder-youtube-api-key
+      REPO_PATH: /repo
+      COMPOSE_FILE: /repo/docker-compose.yml
+      COMPOSE_PROJECT_NAME: history-rhymes
     depends_on:
       db-init:
         condition: service_completed_successfully
