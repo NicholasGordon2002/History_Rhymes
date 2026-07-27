@@ -61,6 +61,61 @@ def is_pg_content(text: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# North American topic filter: prioritize US/Canada/Mexico historical events
+# ---------------------------------------------------------------------------
+NA_PATTERNS = [
+    # Countries / demonyms
+    r'\bUnited States\b', r'\bU\.S\.\b', r'\bUSA\b', r'\bAmerica\b', r'\bAmerican\b',
+    r'\bCanada\b', r'\bCanadian\b',
+    r'\bMexico\b', r'\bMexican\b',
+    # Major US cities
+    r'\bNew York\b', r'\bLos Angeles\b', r'\bChicago\b', r'\bHouston\b',
+    r'\bWashington\s*D\.?C\.?\b', r'\bPhiladelphia\b', r'\bBoston\b',
+    r'\bSan Francisco\b', r'\bDetroit\b', r'\bSeattle\b', r'\bAtlanta\b',
+    r'\bDallas\b', r'\bMiami\b', r'\bPhoenix\b', r'\bDenver\b', r'\bBaltimore\b',
+    r'\bSt\. Louis\b', r'\bSan Diego\b', r'\bNew Orleans\b', r'\bPittsburgh\b',
+    # Canadian cities
+    r'\bToronto\b', r'\bMontreal\b', r'\bVancouver\b', r'\bOttawa\b',
+    r'\bCalgary\b', r'\bEdmonton\b', r'\bQuebec City\b', r'\bWinnipeg\b',
+    r'\bHalifax\b',
+    # Mexican cities
+    r'\bMexico City\b', r'\bGuadalajara\b', r'\bMonterrey\b', r'\bPuebla\b',
+    # US states (abbreviated and full)
+    r'\bCalifornia\b', r'\bTexas\b', r'\bFlorida\b', r'\bIllinois\b',
+    r'\bOhio\b', r'\bPennsylvania\b', r'\bMichigan\b', r'\bGeorgia\b',
+    r'\bVirginia\b', r'\bMassachusetts\b', r'\bArizona\b', r'\bColorado\b',
+    r'\bOregon\b', r'\bLouisiana\b', r'\bAlaska\b', r'\bHawaii\b',
+    # Canadian provinces
+    r'\bOntario\b', r'\bQuebec\b', r'\bBritish Columbia\b', r'\bAlberta\b',
+    r'\bNova Scotia\b', r'\bManitoba\b', r'\bSaskatchewan\b',
+    # North America general
+    r'\bNorth America\b', r'\bNorth American\b',
+    # Notable institutions & landmarks
+    r'\bWhite House\b', r'\bCongress\b', r'\bSenate\b', r'\bPentagon\b',
+    r'\bHollywood\b', r'\bSilicon Valley\b', r'\bWall Street\b',
+    r'\bNASA\b', r'\bSmithsonian\b', r'\bHarvard\b', r'\bYale\b', r'\bMIT\b',
+    r'\bStatue of Liberty\b', r'\bGolden Gate\b', r'\bGrand Canyon\b',
+    r'\bYellowstone\b', r'\bYosemite\b', r'\bNiagara\b', r'\bMount Rushmore\b',
+    r'\bBroadway\b', r'\bManhattan\b', r'\bBrooklyn\b',
+    # Native / Indigenous peoples
+    r'\bNavajo\b', r'\bCherokee\b', r'\bSioux\b', r'\bApache\b',
+    r'\bAztec\b', r'\bMaya\b', r'\bMayan\b', r'\bInuit\b',
+    r'\bIroquois\b', r'\bMohawk\b', r'\bComanche\b',
+]
+
+
+def is_north_american(title: str, description: str) -> bool:
+    """Return True if a historical event appears to be North American
+    (US, Canada, Mexico) based on keyword matching in title and description."""
+    combined = f"{title} {description}"
+    combined_lower = combined.lower()
+    for pattern in NA_PATTERNS:
+        if re.search(pattern, combined_lower):
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 logging.basicConfig(
@@ -242,12 +297,34 @@ def run():
             }
             filtered_events.append(record)
 
-    # --- Cap candidates for cost-conscious testing ---
-    candidates_to_write = filtered_events[:MAX_TOPICS]
+    # --- North American prioritization ---
+    na_events = []
+    other_events = []
+    for ev in filtered_events:
+        if is_north_american(ev["historical_event_title"], ev["historical_event_description"]):
+            na_events.append(ev)
+        else:
+            other_events.append(ev)
+
     logger.info(
-        "[trend-scout] Capped at %d candidates (from %d total)",
-        MAX_TOPICS,
+        "[trend-scout] North American filter: found %d NA events out of %d total candidates",
+        len(na_events),
         len(filtered_events),
+    )
+
+    # Prefer NA events; fall back to general pool if not enough NA candidates
+    if len(na_events) >= MAX_TOPICS:
+        candidates_to_write = na_events[:MAX_TOPICS]
+    else:
+        candidates_to_write = na_events + other_events[:MAX_TOPICS - len(na_events)]
+
+    # --- Cap candidates for cost-conscious testing ---
+    logger.info(
+        "[trend-scout] Capped at %d candidates (from %d total: %d NA + %d other)",
+        len(candidates_to_write),
+        len(filtered_events),
+        len(na_events),
+        len(other_events),
     )
     logger.info(
         "[trend-scout] GDELT disabled — storing %d historical events with pending modern status",

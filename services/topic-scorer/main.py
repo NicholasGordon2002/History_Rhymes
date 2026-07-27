@@ -116,21 +116,45 @@ Your job: score a batch of candidate topic pairings on their potential to earn
 attention as a 60-second YouTube Short.
 
 Evaluation criteria (each 0.0-1.0 scale):
-- emotional_resonance: How strongly will this pairing evoke emotion
-  (anger, awe, nostalgia, irony, schadenfreude, hope, outrage, dark humor)?
+
+- emotional_resonance: How strongly will this pairing evoke emotion? Score higher
+  for positive, uplifting emotions (see emotional_valence below). Score lower
+  for negative or sensational emotions.
+
+- emotional_valence: How POSITIVE and UPLIFTING is this topic? This is a
+  prominent scoring dimension — we actively favor topics that make viewers
+  feel good. Score HIGH (0.7-1.0) for stories of: achievement, wonder, progress,
+  ingenuity, perseverance, cultural breakthroughs, everyday triumphs, discovery,
+  innovation, creativity, resilience, kindness. Score LOW (0.0-0.3) for topics
+  that are grim, sensational, or doom-laden, even if they pass a basic PG filter.
+  Prefer topics that leave viewers feeling inspired, curious, or delighted.
+
 - pairing_novelty: How fresh, surprising, or clever is the connection between
   the historical and modern events? Avoid giving high novelty to obvious pairings.
+
 - rhyme_clarity: How clear and instant is the "rhyme"? Would a viewer grasp the
   connection within the first 3 seconds without explanation?
+
 - attention_potential: Holistic score — likelihood this stops a viewer scrolling
-  and holds them for the full 60 seconds. Consider the YouTuber Shorts audience.
+  and holds them for the full 60 seconds. Consider the YouTube Shorts audience.
+
+- north_american_relevance: How directly does this event relate to US, Canadian,
+  or Mexican history? Score HIGH (0.8-1.0) for events that shaped or involved
+  North America — major US/Canadian/Mexican historical moments, events in North
+  American cities, or North American cultural milestones. Score MEDIUM (0.4-0.7)
+  for events with indirect or partial North American connection. Score LOW
+  (0.0-0.3) for events with no meaningful North American tie.
 
 Rules:
-- Score these topics for a PG-rated educational channel. Topics involving
-  violence, massacres, genocide, terrorism, executions, war, or graphic tragedy
-  should receive very low scores (0.0-0.1 overall). Prefer topics about
-  discovery, invention, culture, sports, politics (non-violent), science,
-  arts, and human achievement.
+- Score these topics for a PG-rated educational channel that focuses on North
+  American history. Topics involving violence, massacres, genocide, terrorism,
+  executions, war, or graphic tragedy should receive very low scores
+  (0.0-0.1 overall). Prefer topics about discovery, invention, culture, sports,
+  politics (non-violent), science, arts, and human achievement.
+- Actively prefer topics that make viewers feel good — stories of human
+  achievement, clever solutions, cultural milestones, and everyday wonder.
+  Penalize topics that are grim, sensational, or doom-laden even if they pass
+  the PG filter.
 - A candidate with "modern_side_weak": true means we haven't found a strong
   modern parallel yet — score the historical event on its standalone merits and
   note the gap. Don't automatically penalize these; sometimes the history alone
@@ -142,10 +166,12 @@ Rules:
 Return ONLY a JSON object with a "results" array. Each element must have:
   "id": int,
   "emotional_resonance": float (0-1),
+  "emotional_valence": float (0-1),
   "pairing_novelty": float (0-1),
   "rhyme_clarity": float (0-1),
   "attention_potential": float (0-1),
-  "overall_score": float (average of the four above, 0-1),
+  "north_american_relevance": float (0-1),
+  "overall_score": float (average of the six dimensions above, 0-1),
   "justification": string (one sentence)
 No other text outside the JSON."""
 
@@ -217,8 +243,10 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
                 cid = item["id"]
                 # Clamp scores to 0-1 range
                 for key in (
-                    "emotional_resonance", "pairing_novelty",
-                    "rhyme_clarity", "attention_potential", "overall_score",
+                    "emotional_resonance", "emotional_valence",
+                    "pairing_novelty", "rhyme_clarity",
+                    "attention_potential", "north_american_relevance",
+                    "overall_score",
                 ):
                     if key in item:
                         item[key] = round(max(0.0, min(1.0, float(item[key]))), 3)
