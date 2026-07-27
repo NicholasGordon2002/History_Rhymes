@@ -51,7 +51,10 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
+
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+
+
       MAX_TOPICS: ${MAX_TOPICS:-3}
     restart: "no"
 
