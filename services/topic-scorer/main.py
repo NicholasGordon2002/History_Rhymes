@@ -22,6 +22,8 @@ from anthropic import Anthropic
 DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 TOP_N = int(os.environ.get("TOP_N", "5"))
+# Cap selected candidates per run (cost-conscious testing; default 3)
+MAX_TOPICS = int(os.environ.get("MAX_TOPICS", "3"))
 MODEL = "claude-3-haiku-20240307"
 MAX_RETRIES = 3
 RETRY_BACKOFF = 2.0  # seconds, multiplied exponentially
@@ -268,9 +270,14 @@ def run():
         return (s.get("overall_score", 0), s.get("attention_potential", 0))
 
     sorted_candidates = sorted(scored.items(), key=sort_key, reverse=True)
-    selected = sorted_candidates[:TOP_N]
+    selected = sorted_candidates[:MAX_TOPICS]
 
-    logger.info("Top %d selected candidates:", len(selected))
+    logger.info(
+        "[topic-scorer] Selected top %d of %d candidates (MAX_TOPICS=%d)",
+        len(selected),
+        len(sorted_candidates),
+        MAX_TOPICS,
+    )
     for cid, scores in selected:
         logger.info(
             "  id=%4d  overall=%.3f  attn=%.3f  %s",
