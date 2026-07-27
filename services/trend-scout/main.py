@@ -1,41 +1,58 @@
 """
 trend-scout: Polls Wikipedia "On This Day" API and GDELT for candidate
 historical/modern event pairings. Writes candidate rows to the topics table.
-
 One-shot batch job: runs, polls, writes candidates, exits.
 """
-
 import os
 import re
 import sqlite3
 import sys
 import logging
 from datetime import datetime, timedelta, timezone
-
 import requests
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-
 DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 WIKIPEDIA_BASE = "https://en.wikipedia.org/api/rest_v1/feed/onthisday/events"
 GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
-
 # How many days to fetch (today + N-1 ahead)
 LOOKAHEAD_DAYS = 3
-
 # Timeouts for external HTTP calls (seconds)
 HTTP_TIMEOUT = 15
 GDELT_TIMEOUT = 10
-
 # Maximum events per day to process (Wikipedia often returns 30-50+)
 MAX_EVENTS_PER_DAY = 10
 
 # ---------------------------------------------------------------------------
+# PG content filter: block violent/tragic/massacre topics
+# ---------------------------------------------------------------------------
+CONTENT_FILTER_PATTERNS = [
+    r'\bmassacre\b', r'\bmurder(ed|s)?\b', r'\bkilled\b', r'\bslaughter\b',
+    r'\bgenocide\b', r'\bholocaust\b', r'\bexecution\b', r'\bassassinat\w+\b',
+    r'\bbombing\b', r'\bterroris\w+\b', r'\btorture\b', r'\brape\b',
+    r'\bsuicide\b', r'\batomic bomb\b', r'\bnuclear (bomb|weapon)\b',
+    r'\bdeath camp\b', r'\bconcentration camp\b', r'\bwar crime\b',
+    r'\batrocit\w+\b', r'\bserial killer\b', r'\bshooting\b',
+    r'\bbehead\w+\b', r'\bexecuted\b', r'\bhung\b', r'\blinching\b',
+]
+
+
+def is_pg_content(text: str) -> bool:
+    """Return True if content passes PG filter (no violence/tragedy)."""
+    if not text:
+        return True
+    text_lower = text.lower()
+    for pattern in CONTENT_FILTER_PATTERNS:
+        if re.search(pattern, text_lower):
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-
 logging.basicConfig(
     level=logging.INFO,
     format="[trend-scout] %(asctime)s %(levelname)s %(message)s",
@@ -47,20 +64,21 @@ logger = logging.getLogger("trend-scout")
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
-
 def connect_db() -> sqlite3.Connection:
-    """Open (and create if needed) the shared SQLite database."""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    """Connect to SQLite, creating parent directories if needed."""
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def insert_candidate(conn: sqlite3.Connection, record: dict) -> int:
-    """
-    Insert a candidate topic row.  Returns the new row id.
-    The `record` dict must contain keys matching the topics columns
+    """Insert a candidate record into the topics table.
+    Returns the new row id.
+
+    Only includes known column keys present in the topics schema
     (except auto-generated ones like id, created_at).
     """
     columns = [
@@ -78,7 +96,6 @@ def insert_candidate(conn: sqlite3.Connection, record: dict) -> int:
     placeholders = ", ".join("?" for _ in provided)
     cols = ", ".join(provided.keys())
     values = list(provided.values())
-
     sql = f"INSERT INTO topics ({cols}) VALUES ({placeholders})"
     cursor = conn.execute(sql, values)
     conn.commit()
@@ -88,7 +105,6 @@ def insert_candidate(conn: sqlite3.Connection, record: dict) -> int:
 # ---------------------------------------------------------------------------
 # HTTP session (shared for connection pooling, proper headers)
 # ---------------------------------------------------------------------------
-
 def _http_session() -> requests.Session:
     """Return a requests.Session with a User-Agent that Wikipedia accepts."""
     session = requests.Session()
@@ -104,7 +120,6 @@ def _http_session() -> requests.Session:
 # ---------------------------------------------------------------------------
 # Wikipedia "On This Day" API
 # ---------------------------------------------------------------------------
-
 def fetch_on_this_day(month: int, day: int) -> list[dict]:
     """
     Fetch historical events from Wikipedia for a given month/day.
@@ -112,7 +127,6 @@ def fetch_on_this_day(month: int, day: int) -> list[dict]:
     """
     url = f"{WIKIPEDIA_BASE}/{month:02d}/{day:02d}"
     logger.info("Fetching Wikipedia On This Day: %02d/%02d", month, day)
-
     try:
         resp = _http_session().get(url, timeout=HTTP_TIMEOUT)
         resp.raise_for_status()
@@ -144,7 +158,6 @@ def fetch_on_this_day(month: int, day: int) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Keyword extraction (simple heuristic for GDELT queries)
 # ---------------------------------------------------------------------------
-
 # Common stop-words to strip from event text before forming a search query
 _STOP_WORDS = {
     "the", "a", "an", "in", "on", "at", "to", "for", "of", "and", "or",
@@ -179,63 +192,44 @@ def extract_keywords(text: str, max_words: int = 4) -> str:
 # ---------------------------------------------------------------------------
 # GDELT DOC 2.0 API
 # ---------------------------------------------------------------------------
-
 def search_gdelt(keywords: str, max_results: int = 3) -> list[dict]:
     """
-    Search GDELT's DOC 2.0 API for recent news articles matching keywords.
-    Returns a list of article dicts (title, url, snippet, sourcecountry).
-    On any error (timeout, HTTP error, bad JSON) returns an empty list.
+    Search GDELT for recent news articles matching the given keywords.
+    Returns a list of article dicts (title, snippet, url, domain, sourcecountry).
     """
     if not keywords.strip():
         return []
-
     params = {
         "query": keywords,
         "format": "json",
-        "mode": "artlist",
         "maxrecords": max_results,
-        "sort": "datedesc",
+        "mode": "artlist",
+        "sort": "hybridrel",
     }
-    logger.debug("GDELT query: %s", keywords)
-
+    logger.info("GDELT search: '%s'", keywords)
     try:
-        resp = _http_session().get(GDELT_DOC_API, params=params, timeout=GDELT_TIMEOUT)
+        resp = requests.get(GDELT_DOC_API, params=params, timeout=GDELT_TIMEOUT)
         resp.raise_for_status()
         data = resp.json()
-    except requests.Timeout:
-        logger.warning("GDELT timed out for query: %s", keywords)
-        return []
     except requests.RequestException as exc:
-        logger.warning("GDELT HTTP error for query '%s': %s", keywords, exc)
+        logger.error("GDELT API error for '%s': %s", keywords, exc)
         return []
-    except ValueError:
-        logger.warning("GDELT returned invalid JSON for query: %s", keywords)
+    except ValueError as exc:
+        logger.error("GDELT API returned invalid JSON for '%s': %s", keywords, exc)
         return []
 
     articles = data.get("articles", [])
-    results = []
-    for art in articles:
-        results.append({
-            "title": art.get("title", ""),
-            "url": art.get("url", ""),
-            "snippet": art.get("seendate", ""),
-            "domain": art.get("domain", ""),
-            "sourcecountry": art.get("sourcecountry", ""),
-        })
-
-    logger.debug("GDELT returned %d articles for '%s'", len(results), keywords)
-    return results
+    logger.info("GDELT returned %d article(s) for '%s'", len(articles), keywords)
+    return articles
 
 
 # ---------------------------------------------------------------------------
-# Pairing logic
+# Modern parallel finder
 # ---------------------------------------------------------------------------
-
 def find_modern_parallel(historical_event: dict) -> tuple[str, str, str]:
     """
-    Given a historical event, attempt to find a modern parallel via GDELT.
-    Returns (modern_title, modern_description, rationale) — may be empty
-    strings if no parallel is found.
+    Given a historical event from Wikipedia, search GDELT for a modern parallel.
+    Returns (modern_title, modern_description, pairing_rationale).
     """
     text = historical_event.get("text", "")
     keywords = extract_keywords(text)
@@ -243,7 +237,6 @@ def find_modern_parallel(historical_event: dict) -> tuple[str, str, str]:
         return ("", "", "historical_event_pending_modern")
 
     articles = search_gdelt(keywords)
-
     if not articles:
         logger.info("No GDELT results for keywords '%s' — storing with pending modern", keywords)
         return ("", "", "historical_event_pending_modern")
@@ -269,14 +262,13 @@ def find_modern_parallel(historical_event: dict) -> tuple[str, str, str]:
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
-
 def run():
     """Main entry point: fetch events, pair, write candidates."""
     conn = connect_db()
-
     today = datetime.now(timezone.utc)
     total_candidates = 0
     total_events_fetched = 0
+    pg_skipped = 0
 
     for offset in range(LOOKAHEAD_DAYS):
         date = today + timedelta(days=offset)
@@ -290,6 +282,7 @@ def run():
         # Process up to MAX_EVENTS_PER_DAY
         for ev in events[:MAX_EVENTS_PER_DAY]:
             total_events_fetched += 1
+
             year = ev.get("year")
             text = ev.get("text", "").strip()
             wiki_title = ev.get("wiki_title", "")
@@ -308,6 +301,12 @@ def run():
             description = text
             if wiki_url:
                 description += f" (source: {wiki_url})"
+
+            # --- PG content filter ---
+            if not is_pg_content(title) or not is_pg_content(text):
+                logger.info("Skipping PG-filtered event: %s", title[:80])
+                pg_skipped += 1
+                continue
 
             # Attempt to find a modern parallel
             modern_title, modern_desc, rationale = find_modern_parallel(ev)
@@ -342,6 +341,11 @@ def run():
         total_events_fetched,
         total_candidates,
         LOOKAHEAD_DAYS,
+    )
+    logger.info(
+        "[trend-scout] PG filter: %d events skipped, %d candidates written",
+        pg_skipped,
+        total_candidates,
     )
 
     if total_candidates == 0:
