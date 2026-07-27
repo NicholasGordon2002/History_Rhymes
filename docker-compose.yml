@@ -38,6 +38,7 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
+      MAX_TOPICS: ${MAX_TOPICS:-3}
     restart: "no"
 
   # Stub: reads candidates, writes a selected record, exits
@@ -51,6 +52,7 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       ANTHROPIC_API_KEY: placeholder-anthropic-api-key
+      MAX_TOPICS: ${MAX_TOPICS:-3}
     restart: "no"
 
   # Multi-source fact pulling with citations for selected topics

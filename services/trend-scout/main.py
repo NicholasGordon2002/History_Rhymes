@@ -24,6 +24,8 @@ HTTP_TIMEOUT = 15
 GDELT_TIMEOUT = 10
 # Maximum events per day to process (Wikipedia often returns 30-50+)
 MAX_EVENTS_PER_DAY = 10
+# Cap total candidates written per run (cost-conscious testing; default 3)
+MAX_TOPICS = int(os.environ.get("MAX_TOPICS", "3"))
 
 # ---------------------------------------------------------------------------
 # PG content filter: block violent/tragic/massacre topics
@@ -266,9 +268,9 @@ def run():
     """Main entry point: fetch events, pair, write candidates."""
     conn = connect_db()
     today = datetime.now(timezone.utc)
-    total_candidates = 0
     total_events_fetched = 0
     pg_skipped = 0
+    filtered_events: list[dict] = []  # collect records that pass PG filter
 
     for offset in range(LOOKAHEAD_DAYS):
         date = today + timedelta(days=offset)
@@ -321,18 +323,34 @@ def run():
                 "google_trends_momentum": None,
                 "status": "candidate",
             }
+            filtered_events.append(record)
 
-            try:
-                row_id = insert_candidate(conn, record)
-                total_candidates += 1
-                logger.info(
-                    "Inserted candidate #%d: %s | modern: %s",
-                    row_id,
-                    title[:60],
-                    modern_title[:60] if modern_title else "(pending)",
-                )
-            except Exception as exc:
-                logger.error("Failed to insert candidate for '%s': %s", title[:60], exc)
+    # --- Cap candidates for cost-conscious testing ---
+    candidates_to_write = filtered_events[:MAX_TOPICS]
+    logger.info(
+        "[trend-scout] Capped at %d candidates (from %d total)",
+        MAX_TOPICS,
+        len(filtered_events),
+    )
+
+    # --- Insert capped candidates ---
+    total_candidates = 0
+    for record in candidates_to_write:
+        try:
+            row_id = insert_candidate(conn, record)
+            total_candidates += 1
+            logger.info(
+                "Inserted candidate #%d: %s | modern: %s",
+                row_id,
+                record["historical_event_title"][:60],
+                record["modern_event_title"][:60] if record["modern_event_title"] else "(pending)",
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to insert candidate for '%s': %s",
+                record["historical_event_title"][:60],
+                exc,
+            )
 
     conn.close()
 
