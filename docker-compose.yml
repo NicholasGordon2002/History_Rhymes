@@ -11,6 +11,23 @@ services:
       DB_PATH: /data/history_rhymes.db
     restart: "no"
 
+  # Orchestrator: runs pipeline stages sequentially via docker compose run
+  scheduler:
+    build:
+      context: ./services/scheduler
+    volumes:
+      - db-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/repo:ro
+    environment:
+      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-history-rhymes}
+    networks:
+      - hr-network
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
   # Polls Wikipedia On This Day + GDELT for candidate pairings
   trend-scout:
     build:
@@ -21,9 +38,6 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # Stub: reads candidates, writes a selected record, exits
@@ -37,9 +51,6 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       ANTHROPIC_API_KEY: placeholder-anthropic-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # Multi-source fact pulling with citations for selected topics
@@ -53,9 +64,6 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       ANTHROPIC_API_KEY: placeholder-anthropic-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # Stub
@@ -69,9 +77,6 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       ANTHROPIC_API_KEY: placeholder-anthropic-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # Stub
@@ -85,9 +90,6 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       STOCK_LIBRARY_API_KEY: placeholder-stock-library-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # Stub
@@ -101,9 +103,6 @@ services:
     environment:
       DB_PATH: /data/history_rhymes.db
       TTS_API_KEY: placeholder-tts-api-key
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # Stub
@@ -116,9 +115,6 @@ services:
       - hr-network
     environment:
       DB_PATH: /data/history_rhymes.db
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # FastAPI review dashboard on port 8000
@@ -158,9 +154,6 @@ services:
       YOUTUBE_CLIENT_ID: placeholder-youtube-client-id
       YOUTUBE_CLIENT_SECRET: placeholder-youtube-client-secret
       YOUTUBE_REFRESH_TOKEN: placeholder-youtube-refresh-token
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
   # Pulls YouTube performance metrics and closes the learning loop
@@ -178,9 +171,6 @@ services:
       YOUTUBE_CLIENT_ID: placeholder-youtube-client-id
       YOUTUBE_CLIENT_SECRET: placeholder-youtube-client-secret
       YOUTUBE_REFRESH_TOKEN: placeholder-youtube-refresh-token
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
     restart: "no"
 
 volumes:
