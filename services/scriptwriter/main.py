@@ -27,7 +27,7 @@ from anthropic import Anthropic
 DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-MODEL = "claude-3-5-sonnet-20241022"
+MODEL = "claude-sonnet-5"
 MAX_RETRIES = 2  # 1 attempt + 1 retry
 RETRY_WAIT = 5.0  # seconds, flat wait between retries
 ANTHROPIC_TIMEOUT = 120.0  # generous — Sonnet synthesis can take longer
