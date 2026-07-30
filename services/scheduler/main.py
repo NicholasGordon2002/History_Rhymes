@@ -18,6 +18,27 @@ SERVICES = [
 ]
 
 
+ZERO_RESULT_PATTERNS = {
+    "trend-scout": ["0 candidates", "written 0"],
+    "topic-scorer": ["0 selected", "no candidates"],
+    "research": ["0 sources", "no selected"],
+    "scriptwriter": ["0 scripts", "no in_progress"],
+    "assembly": ["no topics ready", "0 ready"],
+}
+
+
+def check_zero_results(service_name, stdout):
+    """Check if a stage succeeded but produced zero downstream-workable results."""
+    patterns = ZERO_RESULT_PATTERNS.get(service_name)
+    if not patterns:
+        return
+    stdout_lower = stdout.lower()
+    for pattern in patterns:
+        if pattern in stdout_lower:
+            print(f"[scheduler] ⚠️  WARNING: {service_name} produced zero results — downstream stages may be affected")
+            return
+
+
 def run_stage(service_name, verb, noun):
     print(f"\n[scheduler] === Stage: {service_name} ===")
     try:
@@ -47,6 +68,7 @@ def run_stage(service_name, verb, noun):
             # Try to parse meaningful output for a summary
             summary = extract_summary(service_name, result.stdout)
             print(f"[scheduler] {service_name}: SUCCESS — {summary}")
+            check_zero_results(service_name, result.stdout)
             return True
         else:
             print(f"[scheduler] {service_name}: FAILED (exit code {result.returncode})")
