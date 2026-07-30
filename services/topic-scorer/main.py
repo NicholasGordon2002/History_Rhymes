@@ -220,7 +220,6 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
                 max_tokens=2048,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
-                thinking={"type": "disabled"},
             )
 
             # Find the first text block (skip any thinking blocks)
