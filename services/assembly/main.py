@@ -108,9 +108,6 @@ def get_ready_topics(conn: sqlite3.Connection):
         WHERE t.status = 'draft'
           AND s.segments_json IS NOT NULL
           AND s.segments_json != ''
-          AND EXISTS (
-              SELECT 1 FROM visual_assets va WHERE va.topic_id = t.id
-          )
         ORDER BY t.id
         """
     )

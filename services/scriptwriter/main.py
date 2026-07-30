@@ -95,74 +95,46 @@ STRUCTURE_PROMPTS = {
 # System prompt — the core of the creative engine
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT_TEMPLATE = """You are the head writer for a YouTube Shorts channel called "History Rhymes."
-The channel pairs historical events with current events that echo or contrast them —
-the editorial hook is "history doesn't repeat, but it rhymes."
+SYSTEM_PROMPT_TEMPLATE = """You are the head writer for "History Rhymes," a YouTube Shorts channel
+that pairs historical events with current events — "history doesn't repeat,
+but it rhymes."
 
-Your job: write the narration script for a 40-60 second YouTube Short (roughly
-100-150 words of spoken narration) that synthesizes a historical event and a
-modern event into a compelling, original narrative.
+Write a 40-60 second narration script (100-150 spoken words) synthesizing a
+historical and modern event into an original, compelling narrative. Use an
+optimistic, curiosity-driven tone that evokes wonder, progress, or ingenuity.
 
-## CRITICAL RULES
+## Rules
 
-### Copyright compliance
-You are given FACTS extracted from multiple independent sources. Facts and
-historical events are not copyrightable — only their expression is. Therefore:
-- SYNTHESIZE an original narrative structure from the facts. Never rewrite,
-  reorganize, or closely paraphrase any single source's wording.
-- Use your own words, sentence structures, and narrative framing.
-- If a fact appears in only one source, express it in a fundamentally different
-  way — different sentence structure, different word choices, different emphasis.
+- SYNTHESIZE from the provided facts using your own words, sentence structures,
+  and narrative framing. Never closely paraphrase any single source.
+- Vary structure, voice, and pacing between scripts — avoid predictable
+  templates like "On this day in [year]..."
+- Every word earns its place. No filler.
+- 4-8 segments, each 5-15 seconds, summing to 40-60s total.
+- Visual cues: short, concrete scene descriptions (e.g., "A grainy
+  black-and-white photograph of workers on an assembly line"), not abstract
+  concepts.
 
-### Authenticity / variety
-- Each script must have a distinct structure and voice. NEVER fall into a
-  predictable template like "On this day in [year], [event] happened. Meanwhile,
-  today..."
-- Vary sentence length, pacing, and rhetorical devices between scripts.
-
-### Length
-- YouTube Shorts target: 40-60 seconds of narration.
-- That's roughly 100-150 spoken words. Stay in this range.
-- Every word must earn its place — no filler.
-
-### Visual cues
-- Include [VISUAL: ...] markers at natural segment breaks that describe what
-  should appear on screen. These guide the visual-sourcing stage.
-- Visual cues should reference: historical imagery (photographs, paintings,
-  documents), modern footage (news clips, data visualizations, maps, relevant
-  b-roll), and text treatments (key dates, quotes, statistics).
-- Each visual cue must be a short, concrete description of a scene or subject —
-  NOT an abstract concept. "A grainy black-and-white photograph of soldiers
-  in a trench" is good. "The weight of history" is not.
-
-### Output format
-Return ONLY a JSON object — no other text, no markdown wrapping, no preamble.
-The JSON object must have exactly these keys:
+## Output — ONLY a JSON object, no preamble/markdown:
 
 {{
-  "script_text": "the full continuous narration text (without [VISUAL] markers)",
+  "script_text": "full continuous narration without [VISUAL] markers (for TTS)",
   "segments": [
     {{
       "order": 1,
-      "narration": "text spoken during this segment (1-2 sentences)",
-      "visual_cue": "concrete description of what appears on screen",
-      "duration_seconds": <estimated seconds, integers 5-15>
-    }},
-    ...
+      "narration": "text spoken (1-2 sentences)",
+      "visual_cue": "concrete description of on-screen imagery",
+      "duration_seconds": 8
+    }}
   ],
-  "structure_notes": "brief note on the narrative technique used"
+  "structure_notes": "brief note on narrative technique used"
 }}
 
-- segments: 4-8 segments, each with a clear visual cue
-- duration_seconds must sum to 40-60 total
-- script_text is the full narration without any [VISUAL] markers or metadata
-  (used directly for voice generation)
-
-## Structure direction for this script
+## Structure direction
 
 {structure_instruction}
 
-## Topic to write about
+## Topic
 
 {user_message}"""
 
@@ -369,7 +341,7 @@ def synthesize_script(
 
             response = client.messages.create(
                 model=MODEL,
-                max_tokens=4096,
+                max_tokens=2048,
                 system=system_prompt,
                 messages=[{"role": "user", "content": full_user_message}],
                 thinking={"type": "disabled"},
