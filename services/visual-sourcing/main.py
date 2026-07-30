@@ -424,8 +424,10 @@ def main():
                 continue
 
             try:
-                parsed = json.loads(segments_json)
-                segments = parsed.get("segments", [])
+                segments = json.loads(segments_json)
+                if not isinstance(segments, list):
+                    logger.error(f"Topic {topic_id}: segments_json is not a list, skipping")
+                    continue
             except (json.JSONDecodeError, TypeError) as e:
                 logger.error(f"Topic {topic_id}: failed to parse segments_json: {e}")
                 continue

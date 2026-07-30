@@ -548,8 +548,10 @@ def assemble_topic(
     # --- Parse segments ---
     segments_json = topic_row["segments_json"]
     try:
-        parsed = json.loads(segments_json)
-        segments = parsed.get("segments", [])
+        segments = json.loads(segments_json)
+        if not isinstance(segments, list):
+            logger.error("Topic #%d: segments_json is not a list", topic_id)
+            return False
     except (json.JSONDecodeError, TypeError) as exc:
         logger.error("Topic #%d: failed to parse segments_json: %s", topic_id, exc)
         return False
