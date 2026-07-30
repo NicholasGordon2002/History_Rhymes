@@ -6,6 +6,7 @@ Reads all candidates (status='candidate'), batches them into a single Claude
 API call, then marks the top-N by score as 'selected'.
 """
 
+import ast
 import json
 import os
 import sqlite3
@@ -237,7 +238,12 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
 
-            result = json.loads(content)
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError:
+                # Claude (especially fable-5) sometimes returns Python-style
+                # dicts with single quotes — fall back to ast.literal_eval
+                result = ast.literal_eval(content)
 
             if "results" not in result or not isinstance(result["results"], list):
                 raise ValueError("Claude response missing 'results' array")
