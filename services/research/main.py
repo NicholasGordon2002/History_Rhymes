@@ -521,7 +521,10 @@ def fetch_modern_facts(topic: sqlite3.Row) -> list[dict]:
     # Check if there's actually modern event information to search for
     modern_title = (topic["modern_event_title"] or "").strip()
     modern_desc = (topic["modern_event_description"] or "").strip()
-    if (not modern_title or modern_title == "Recent Event") and not modern_desc:
+    pairing_rationale = (topic["pairing_rationale"] or "").strip()
+    if (
+        (not modern_title or modern_title == "Recent Event") and not modern_desc
+    ) or "pending_modern" in pairing_rationale:
         logger.info(
             "Topic #%d has no meaningful modern event data — skipping modern research",
             topic["id"],
