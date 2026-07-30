@@ -342,6 +342,7 @@ def synthesize_script(
             response = client.messages.create(
                 model=MODEL,
                 max_tokens=2048,
+                temperature=0.7,
                 system=system_prompt,
                 messages=[{"role": "user", "content": full_user_message}],
                 thinking={"type": "disabled"},

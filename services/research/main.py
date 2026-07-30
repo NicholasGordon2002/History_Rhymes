@@ -372,12 +372,12 @@ def fetch_modern_facts_via_claude(topic: sqlite3.Row) -> list[dict]:
 
             response = client.messages.create(
                 model=MODEL,
-                max_tokens=2048,
+                max_tokens=1024,
+                temperature=0.7,
                 system=MODERN_FACTS_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
                 tools=[{"type": "web_search_20250305", "name": "web_search"}],
                 tool_choice="auto",
-                thinking={"type": "disabled"},
             )
 
             # Response may contain tool_use blocks followed by a text block
