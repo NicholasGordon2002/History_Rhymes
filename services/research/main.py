@@ -377,6 +377,7 @@ def fetch_modern_facts_via_claude(topic: sqlite3.Row) -> list[dict]:
                 messages=[{"role": "user", "content": user_message}],
                 tools=[{"type": "web_search_20250305", "name": "web_search"}],
                 tool_choice="auto",
+                thinking={"type": "disabled"},
             )
 
             # Response may contain tool_use blocks followed by a text block

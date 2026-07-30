@@ -220,10 +220,17 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
                 max_tokens=4096,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
+                thinking={"type": "disabled"},
             )
 
-            # Extract text from the response
-            content = response.content[0].text
+            # Find the first text block (skip any thinking blocks)
+            content = None
+            for block in response.content:
+                if hasattr(block, "text"):
+                    content = block.text
+                    break
+            if content is None:
+                raise ValueError("No text content in response")
 
             # Handle potential markdown code fences
             if "```json" in content:

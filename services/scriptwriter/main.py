@@ -372,10 +372,17 @@ def synthesize_script(
                 max_tokens=4096,
                 system=system_prompt,
                 messages=[{"role": "user", "content": full_user_message}],
+                thinking={"type": "disabled"},
             )
 
-            # Extract text content
-            content = response.content[0].text
+            # Find the first text block (skip any thinking blocks)
+            content = None
+            for block in response.content:
+                if hasattr(block, "text"):
+                    content = block.text
+                    break
+            if content is None:
+                raise ValueError("No text content in response")
 
             # Handle potential markdown code fences
             if "```json" in content:
