@@ -6,6 +6,7 @@ Stage 8: full review dashboard — list pending, review detail, approve/reject.
 import os
 import sqlite3
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
@@ -300,6 +301,55 @@ def reject_video(video_id: int, review_notes: str = Form(default="")):
         conn.close()
 
     return RedirectResponse(url="/", status_code=303)
+
+
+@app.get("/status", response_class=HTMLResponse)
+def pipeline_status(request: Request):
+    """Pipeline health status page — shows topics by status, content inventory, DB health."""
+    conn = get_db_connection()
+    try:
+        # Topics by status
+        status_cursor = conn.execute(
+            "SELECT status, COUNT(*) as cnt FROM topics GROUP BY status ORDER BY status"
+        )
+        status_rows = status_cursor.fetchall()
+
+        # Content inventory
+        sources_count = conn.execute("SELECT COUNT(*) as c FROM sources").fetchone()["c"]
+        scripts_count = conn.execute("SELECT COUNT(*) as c FROM scripts").fetchone()["c"]
+        assets_count = conn.execute("SELECT COUNT(*) as c FROM visual_assets").fetchone()["c"]
+        videos_count = conn.execute("SELECT COUNT(*) as c FROM videos").fetchone()["c"]
+        pending_review_count = conn.execute(
+            "SELECT COUNT(*) as c FROM videos WHERE review_status='pending'"
+        ).fetchone()["c"]
+
+        # Topic count total
+        topic_count = conn.execute("SELECT COUNT(*) as c FROM topics").fetchone()["c"]
+    finally:
+        conn.close()
+
+    # DB health
+    try:
+        db_size_bytes = os.path.getsize(DB_PATH)
+        db_size_mb = db_size_bytes / (1024 * 1024)
+    except (OSError, FileNotFoundError):
+        db_size_mb = None
+
+    return render_template(
+        "status.html",
+        {
+            "request": request,
+            "status_rows": status_rows,
+            "sources_count": sources_count,
+            "scripts_count": scripts_count,
+            "assets_count": assets_count,
+            "videos_count": videos_count,
+            "pending_review_count": pending_review_count,
+            "topic_count": topic_count,
+            "db_size_mb": db_size_mb,
+            "db_path": DB_PATH,
+        },
+    )
 
 
 @app.get("/health")

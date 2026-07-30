@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Status — History Rhymes</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            line-height: 1.5;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+        h1 { font-size: 1.6rem; margin-bottom: 8px; color: #fff; }
+        h2 { font-size: 1.15rem; margin: 28px 0 12px; color: #ccc; border-bottom: 1px solid #2a2a2a; padding-bottom: 6px; }
+        .subtitle { color: #aaa; margin-bottom: 24px; font-size: 0.9rem; }
+
+        table {
+            width: 100%; border-collapse: collapse; background: #1a1a1a;
+            border-radius: 8px; overflow: hidden; margin-bottom: 12px;
+        }
+        th, td { padding: 10px 16px; text-align: left; }
+        th {
+            background: #252525; color: #bbb; font-weight: 600;
+            font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        td { border-top: 1px solid #2a2a2a; font-size: 0.9rem; }
+        tr:hover { background: #222; }
+
+        .count { font-variant-numeric: tabular-nums; font-weight: 600; }
+        .count-zero { color: #666; }
+        .count-positive { color: #7eb8da; }
+
+        .status-badge {
+            display: inline-block; border-radius: 4px; padding: 2px 8px;
+            font-size: 0.75rem; font-weight: 500;
+        }
+        .status-candidate { background: #3a3a3a; color: #aaa; }
+        .status-selected { background: #1a3a5c; color: #7eb8da; }
+        .status-in_progress { background: #5c4a1a; color: #dab87e; }
+        .status-draft { background: #2a5c1a; color: #8eda7e; }
+        .status-approved { background: #1a5c3a; color: #7edaae; }
+        .status-rejected { background: #5c1a1a; color: #da7e7e; }
+        .status-published { background: #1a1a5c; color: #7e7eda; }
+
+        .inventory-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px; margin-bottom: 12px;
+        }
+        .inventory-card {
+            background: #1a1a1a; border-radius: 8px; padding: 16px;
+            border: 1px solid #2a2a2a;
+        }
+        .inventory-card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+        .inventory-card .value { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+
+        .db-health { display: flex; gap: 24px; flex-wrap: wrap; }
+        .db-health-item { background: #1a1a1a; border-radius: 8px; padding: 16px; border: 1px solid #2a2a2a; }
+        .db-health-item .label { font-size: 0.75rem; color: #888; }
+        .db-health-item .value { font-size: 1.1rem; font-weight: 600; margin-top: 2px; }
+
+        .nav { margin-bottom: 20px; }
+        .nav a { color: #7eb8da; text-decoration: none; font-size: 0.85rem; margin-right: 20px; }
+        .nav a:hover { text-decoration: underline; }
+        .nav a.active { color: #fff; font-weight: 600; }
+
+        .warning-note {
+            background: #5c4a1a; border: 1px solid #8a6d2b;
+            color: #f0d68a; border-radius: 6px; padding: 10px 14px;
+            margin-top: 12px; font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">← Dashboard</a>
+        <a href="/status" class="active">Pipeline Status</a>
+    </div>
+    <h1>Pipeline Status</h1>
+    <p class="subtitle">History Rhymes — system health at a glance</p>
+
+    <!-- Topics by status -->
+    <h2>Topics by Status</h2>
+    {% if status_rows|length == 0 %}
+    <div class="warning-note">No topics in database — the pipeline has not produced any topics yet.</div>
+    {% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in status_rows %}
+            <tr>
+                <td><span class="status-badge status-{{ row.status }}">{{ row.status }}</span></td>
+                <td>
+                    <span class="count {% if row.cnt == 0 %}count-zero{% else %}count-positive{% endif %}">
+                        {{ row.cnt }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Content inventory -->
+    <h2>Content Inventory</h2>
+    <div class="inventory-grid">
+        <div class="inventory-card">
+            <div class="label">Sources</div>
+            <div class="value">{{ sources_count }}</div>
+        </div>
+        <div class="inventory-card">
+            <div class="label">Scripts</div>
+            <div class="value">{{ scripts_count }}</div>
+        </div>
+        <div class="inventory-card">
+            <div class="label">Visual Assets</div>
+            <div class="value">{{ assets_count }}</div>
+        </div>
+        <div class="inventory-card">
+            <div class="label">Videos</div>
+            <div class="value">{{ videos_count }}</div>
+        </div>
+        <div class="inventory-card">
+            <div class="label">Pending Review</div>
+            <div class="value">{{ pending_review_count }}</div>
+        </div>
+    </div>
+
+    {% if pending_review_count == 0 and videos_count > 0 %}
+    <div class="warning-note">
+        {{ videos_count }} video(s) exist but none are pending review. They may be approved, rejected, or need assembly.
+        <a href="/" style="color: #f0d68a;">Check the dashboard</a>.
+    </div>
+    {% endif %}
+
+    {% if topic_count > 0 and videos_count == 0 %}
+    <div class="warning-note">
+        {{ topic_count }} topic(s) exist but zero videos have been assembled. Check the topic status table above — topics stuck at "candidate" or "selected" indicate an upstream pipeline failure.
+    </div>
+    {% endif %}
+
+    <!-- Database health -->
+    <h2>Database Health</h2>
+    <div class="db-health">
+        <div class="db-health-item">
+            <div class="label">DB Path</div>
+            <div class="value" style="font-size: 0.85rem; font-family: monospace;">{{ db_path }}</div>
+        </div>
+        <div class="db-health-item">
+            <div class="label">File Size</div>
+            <div class="value">
+                {% if db_size_mb is not none %}
+                    {{ "%.2f"|format(db_size_mb) }} MB
+                {% else %}
+                    (unavailable)
+                {% endif %}
+            </div>
+        </div>
+        <div class="db-health-item">
+            <div class="label">Total Topics</div>
+            <div class="value">{{ topic_count }}</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
