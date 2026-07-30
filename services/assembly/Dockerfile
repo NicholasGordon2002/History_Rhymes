@@ -2,7 +2,7 @@ FROM python:3.11-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg ttf-dejavu
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
