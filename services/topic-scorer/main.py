@@ -218,7 +218,8 @@ def score_candidates(payload: list[dict]) -> dict[int, dict]:
 
             response = client.messages.create(
                 model=MODEL,
-                max_tokens=2048,
+                max_tokens=1024,
+                temperature=0.7,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_message}],
             )

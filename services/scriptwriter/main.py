@@ -27,7 +27,7 @@ from anthropic import Anthropic
 DB_PATH = os.environ.get("DB_PATH", "/data/history_rhymes.db")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-MODEL = "claude-sonnet-5"
+MODEL = "claude-sonnet-4-20250514"
 MAX_RETRIES = 2  # 1 attempt + 1 retry
 RETRY_WAIT = 5.0  # seconds, flat wait between retries
 ANTHROPIC_TIMEOUT = 120.0  # generous — Sonnet synthesis can take longer
@@ -342,6 +342,7 @@ def synthesize_script(
             response = client.messages.create(
                 model=MODEL,
                 max_tokens=2048,
+                temperature=0.7,
                 system=system_prompt,
                 messages=[{"role": "user", "content": full_user_message}],
                 thinking={"type": "disabled"},
